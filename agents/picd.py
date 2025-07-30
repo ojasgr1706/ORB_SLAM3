@@ -44,6 +44,15 @@ import rospy
 from sensor_msgs.msg import PointCloud2, PointField
 from sensor_msgs import point_cloud2
 
+def update_transf_r2w_from_orbslam(matrix_str):
+    values = list(map(float, matrix_str.strip().split(',')))
+    assert len(values) == 16
+    transf_r2w = np.array(values).reshape((4, 4))
+    rot_r2w = transf_r2w[:3, :3]
+    transl_r2w = transf_r2w[:3, 3]
+    rpy = R.from_matrix(rot_r2w).as_euler('xyz', degrees=False)
+    return transf_r2w, rot_r2w, transl_r2w, rpy
+
 class OpenCVagent(AutonomousAgent):
     """
     OpenCVagent: Demonstrates how to:
@@ -227,18 +236,29 @@ class OpenCVagent(AutonomousAgent):
             # rot_c2r = 0 since its fixed
         
         # Parameters for robot to world(Currently using GT for testing)
-        transf_r2w = self.get_transform()
-        r, p, y = transf_r2w.rotation.roll, transf_r2w.rotation.pitch, transf_r2w.rotation.yaw
-        # rot_r2w = self.eul_to_rot(r, p, y)
-        rpy = np.array([r,p,y])
-        rot = R.from_euler('xyz', rpy)
-        rot_r2w = rot.as_matrix()
-        # print(rot_r2w)
-        transl_r2w = np.array([transf_r2w.location.x, transf_r2w.location.y, transf_r2w.location.z])
-        # print(transl_r2w)
-        transf_r2w = np.eye(4)
-        transf_r2w[:3, :3] = rot_r2w
-        transf_r2w[:3, 3] = transl_r2w
+        # transf_r2w = self.get_transform()
+        # r, p, y = transf_r2w.rotation.roll, transf_r2w.rotation.pitch, transf_r2w.rotation.yaw
+        # # rot_r2w = self.eul_to_rot(r, p, y)
+        # rpy = np.array([r,p,y])
+        # rot = R.from_euler('xyz', rpy)
+        # rot_r2w = rot.as_matrix()
+        # # print(rot_r2w)
+        # transl_r2w = np.array([transf_r2w.location.x, transf_r2w.location.y, transf_r2w.location.z])
+        # # print(transl_r2w)
+        # transf_r2w = np.eye(4)
+        # transf_r2w[:3, :3] = rot_r2w
+        # transf_r2w[:3, 3] = transl_r2w
+
+        # transf_r2w, rot_r2w, transl_r2w, rpy = update_transf_r2w_from_orbslam(matrix_str)
+        print("[INFO] Listening for SLAM poses...")
+        
+        with open("/tmp/slam_pose_pipe", "r") as fifo:
+            while True:
+                line = fifo.readline()
+                if line:
+                    transf_r2w, rot_r2w, transl_r2w, rpy = update_transf_r2w_from_orbslam(line)
+                    print("Translation:", transl_r2w)
+                    print("RPY (rad):", rpy)
         # transf_r2w = np.vstack(transf_r2w, np.array([0,0,0,1]))
         # print(transf_r2w)
 

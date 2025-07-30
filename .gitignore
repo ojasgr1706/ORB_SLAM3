@@ -129,6 +129,7 @@ captured_data/
 data/
 dataset/
 datasets/
+live_trajectory/
 
 # OpenCV and visualization
 *.mp4
